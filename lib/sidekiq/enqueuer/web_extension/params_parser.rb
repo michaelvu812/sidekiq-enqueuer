@@ -24,7 +24,11 @@ module Sidekiq
 
         def extract_value(param_name)
           return nil unless raw_params[param_name].present?
-          cleanup(raw_params[param_name])
+          value = cleanup(raw_params[param_name])
+          is_hash, hash = hashable(value)
+          return hash if is_hash
+
+          value
         end
 
         def cleanup(value)
@@ -32,6 +36,16 @@ module Sidekiq
           return '' if value.to_s.strip.empty?
           value
         end
+
+        def hashable(value)
+          return [true, value] if value.is_a?(Hash)
+          return [false, value] if value.blank? || !value.is_a?(String)
+
+          hash = YAML.load(value.gsub('=>', ':'))
+          [hash.is_a?(Hash), hash]
+        rescue
+          [false, value]
+        end   
       end
     end
   end
